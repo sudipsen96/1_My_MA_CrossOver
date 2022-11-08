@@ -1,0 +1,859 @@
+Pine Script
+
+plot(basis, "Basis", color=#FF6D00, offset = offset)
+p1 = plot(upper, "Upper", color=#2962FF, offset = offset)
+p2 = plot(lower, "Lower", color=#2962FF, offset = offset)
+fill(p1, p2, title = "Background", color=color.rgb(33, 150, 243, 95))
+
+-----------------------------------------------------------------------------
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © sudipsen96
+
+//@version=5
+strategy("My RSI Screener", overlay=true, margin_long=100, margin_short=100)
+
+rsi_length = input(14,title = "RSI Length")
+rsi_overbought = input(70,title = "RSI Overbought")
+
+s01 = input.symbol("USDCAD", title = "Symbol 01")
+s02 = input.symbol("EURUSD", title = "Symbol 02")
+
+screenerfunc()=>
+    rsi = ta.rsi(close,rsi_length)
+    cond = rsi < rsi_overbought
+    [rsi,cond]
+
+roundn(x,n)=>
+    mult = 1
+    if n!= 0
+        for i=1 to math.abs(n)
+            mult *= 10
+    
+    n >= 0 ? math.round(x*mult)/mult : math.round(x/mult)*mult
+
+[v01,c01] = request.security(s01,timeframe.period,screenerfunc())
+[v02,c02] = request.security(s02,timeframe.period,screenerfunc())
+
+scr_label = "Screener:  \n##############\n"
+
+scr_label := c01  ? scr_label + s01 + ' ' + str.tostring(roundn(v01, 3)) +  '\n'  : scr_label
+scr_label := c02  ? scr_label + s02 + ' ' + str.tostring(roundn(v02, 3)) +  '\n'  : scr_label
+
+lab_l = label.new(
+          bar_index, 0, scr_label, 
+          color=color.gray, 
+          style = label.style_label_down,
+          textcolor=color.black,
+          yloc = yloc.price)
+
+label.delete(lab_l[1])
+color1 = color.new(#a2a2d0,100)
+plot(0,"Color",color1)
+
+if (timeframe.isintraday and time >= timestamp(year(timenow), month(timenow), dayofmonth(timenow), 00, 00))
+    strategy.entry("dummy_long", strategy.long, when = strategy.position_size[1] == 0 and barstate.isconfirmed, alert_message = scr_label)
+    strategy.close("dummy_long",       when = strategy.position_size[1] != 0 and barstate.isconfirmed, alert_message = scr_label)
+    
+if ((not timeframe.isintraday) and time >= timenow - 30 * 1000 * 60 * 60 * 24)
+    strategy.entry("dummy_long", strategy.short, when = strategy.position_size[1] == 0 and barstate.isconfirmed, alert_message = scr_label)
+    strategy.close("dummy_long",       when = strategy.position_size[1] != 0 and barstate.isconfirmed, alert_message = scr_label)
+    
+
+
+-----------------------------------------------------------------------------
+x = if (ta.crossunder(my_rsi,80))
+    alert("Sell Now- RSI ")
+    true
+else if (ta.crossover(my_rsi,20))
+    alert("Buy Now-RSI ")
+    true
+else
+    false
+    
+
+plotchar(x,char = "*",size = size.large,color = color.green )
+
+------------------------------------------------------------------------------
+//@version=5
+indicator(title="Stochastic", shorttitle="Stoch", format=format.price, precision=2, timeframe="", timeframe_gaps=true)
+periodK = input.int(14, title="%K Length", minval=1)
+smoothK = input.int(1, title="%K Smoothing", minval=1)
+periodD = input.int(3, title="%D Smoothing", minval=1)
+k = ta.sma(ta.stoch(close, high, low, periodK), smoothK)
+d = ta.sma(k, periodD)
+plot(k, title="%K", color=#2962FF)
+plot(d, title="%D", color=#FF6D00)
+h0 = hline(80, "Upper Band", color=#787B86)
+hline(50, "Middle Band", color=color.new(#787B86, 50))
+h1 = hline(20, "Lower Band", color=#787B86)
+fill(h0, h1, color=color.rgb(33, 150, 243, 90), title="Background")
+
+----------------------------------------------------------------------------------
+buynow = if(ta.crossover(ta.rsi(close,rsi_length),rsi_oversold))
+    true
+    
+sellnow = if(ta.crossunder(ta.rsi(close,rsi_length),rsi_overbought))
+    true
+
+plotshape(buynow,style=shape.triangleup,location=location.belowbar,size = size.normal,color = color.green)
+plotshape(sellnow,style=shape.triangledown,location=location.abovebar,size = size.normal,color = color.red)
+
+
+----------------------------------------------------------------------------------------
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © sudipsen96
+
+//@version=5
+indicator("My RSI Multicurrency Screener",overlay = true,title="My RSI Multicurrency Screener")
+
+rsi_length = 14
+rsi_overbought = 80
+rsi_oversold = 20
+
+screener = input.bool(false,title="Screener")
+
+//input symbols
+s01 = input.symbol("EURUSD", title = "Symbol 01")
+s02 = input.symbol("USDCAD", title = "Symbol 02")
+s03 = input.symbol("AUDUSD", title = "Symbol 03")
+s04 = input.symbol("GBPUSD", title = "Symbol 04")
+s05 = input.symbol("USDCHF", title = "Symbol 05")
+s06 = input.symbol("USDJPY", title = "Symbol 06")
+s07 = input.symbol("AUDCAD", title = "Symbol 07")
+s08 = input.symbol("AUDCHF", title = "Symbol 08")
+s09 = input.symbol("AUDJPY", title = "Symbol 09")
+s10 = input.symbol("AUDNZD", title = "Symbol 10")
+s11 = input.symbol("CADCHF", title = "Symbol 11")
+s12 = input.symbol("CADJPY", title = "Symbol 12")
+s13 = input.symbol("CHFJPY", title = "Symbol 13")
+s14 = input.symbol("EURAUD", title = "Symbol 14")
+s15 = input.symbol("EURCAD", title = "Symbol 15")
+s16 = input.symbol("EURCHF", title = "Symbol 16")
+s17 = input.symbol("EURGBP", title = "Symbol 17")
+s18 = input.symbol("EURJPY", title = "Symbol 18")
+s19 = input.symbol("EURNZD", title = "Symbol 19")
+s20 = input.symbol("GBPAUD", title = "Symbol 20")
+s21 = input.symbol("GBPCAD", title = "Symbol 21")
+s22 = input.symbol("GBPCHF", title = "Symbol 22")
+s23 = input.symbol("GBPJPY", title = "Symbol 23")
+s24 = input.symbol("GBPNZD", title = "Symbol 24")
+s25 = input.symbol("NZDCAD", title = "Symbol 25")
+s26 = input.symbol("NZDCHF", title = "Symbol 26")
+s27 = input.symbol("NZDJPY", title = "Symbol 27")
+s28 = input.symbol("NZDUSD", title = "Symbol 28")
+
+
+
+screenerfunc()=>
+    rsi = ta.rsi(close,rsi_length)
+    myclose = close
+    [rsi,close]
+
+//getting values
+[rsi_value_01,close_01] = request.security(s01,timeframe.period,screenerfunc())
+[rsi_value_02,close_02] = request.security(s02,timeframe.period,screenerfunc())
+[rsi_value_03,close_03] = request.security(s03,timeframe.period,screenerfunc())
+[rsi_value_04,close_04] = request.security(s04,timeframe.period,screenerfunc())
+[rsi_value_05,close_05] = request.security(s05,timeframe.period,screenerfunc())
+[rsi_value_06,close_06] = request.security(s06,timeframe.period,screenerfunc())
+[rsi_value_07,close_07] = request.security(s07,timeframe.period,screenerfunc())
+[rsi_value_08,close_08] = request.security(s08,timeframe.period,screenerfunc())
+[rsi_value_09,close_09] = request.security(s09,timeframe.period,screenerfunc())
+[rsi_value_10,close_10] = request.security(s10,timeframe.period,screenerfunc())
+[rsi_value_11,close_11] = request.security(s11,timeframe.period,screenerfunc())
+[rsi_value_12,close_12] = request.security(s12,timeframe.period,screenerfunc())
+[rsi_value_13,close_13] = request.security(s13,timeframe.period,screenerfunc())
+[rsi_value_14,close_14] = request.security(s14,timeframe.period,screenerfunc())
+[rsi_value_15,close_15] = request.security(s15,timeframe.period,screenerfunc())
+[rsi_value_16,close_16] = request.security(s16,timeframe.period,screenerfunc())
+[rsi_value_17,close_17] = request.security(s17,timeframe.period,screenerfunc())
+[rsi_value_18,close_18] = request.security(s18,timeframe.period,screenerfunc())
+[rsi_value_19,close_19] = request.security(s19,timeframe.period,screenerfunc())
+[rsi_value_20,close_20] = request.security(s20,timeframe.period,screenerfunc())
+[rsi_value_21,close_21] = request.security(s21,timeframe.period,screenerfunc())
+[rsi_value_22,close_22] = request.security(s22,timeframe.period,screenerfunc())
+[rsi_value_23,close_23] = request.security(s23,timeframe.period,screenerfunc())
+[rsi_value_24,close_24] = request.security(s24,timeframe.period,screenerfunc())
+[rsi_value_25,close_25] = request.security(s25,timeframe.period,screenerfunc())
+[rsi_value_26,close_26] = request.security(s26,timeframe.period,screenerfunc())
+[rsi_value_27,close_27] = request.security(s27,timeframe.period,screenerfunc())
+[rsi_value_28,close_28] = request.security(s28,timeframe.period,screenerfunc())
+
+
+//checking conditions
+x1 = if (ta.crossunder(rsi_value_01,rsi_overbought))
+    alert("Sell Now-RSI"+" "+s01+" "+ str.tostring(close_01 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_01,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s01+" "+str.tostring(close_01 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+    
+
+
+
+x2 = if (ta.crossunder(rsi_value_02,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s02+" "+ str.tostring(close_02),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_02,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s02+" "+ str.tostring(close_02),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+
+x3 = if (ta.crossunder(rsi_value_03,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s03+" "+ str.tostring(close_03),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_03,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s03+" "+ str.tostring(close_03),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x4 = if (ta.crossunder(rsi_value_04,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s04+" "+ str.tostring(close_04),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_04,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s04+" "+ str.tostring(close_04),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x5 = if (ta.crossunder(rsi_value_05,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s05+" "+ str.tostring(close_05),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_05,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s05+" "+ str.tostring(close_05),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x6 = if (ta.crossunder(rsi_value_06,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s06+" "+ str.tostring(close_06),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_06,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s06+" "+ str.tostring(close_06),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x7 = if (ta.crossunder(rsi_value_07,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s07+" "+ str.tostring(close_07),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_07,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s07+" "+ str.tostring(close_07),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x8 = if (ta.crossunder(rsi_value_08,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s08+" "+ str.tostring(close_08),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_08,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s08+" "+ str.tostring(close_08),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x9 = if (ta.crossunder(rsi_value_09,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s09+" "+ str.tostring(close_09),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_02,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s09+" "+ str.tostring(close_09),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x10 = if (ta.crossunder(rsi_value_10,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s10+" "+ str.tostring(close_10),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_10,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s10+" "+ str.tostring(close_10),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x11 = if (ta.crossunder(rsi_value_11,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s11+" "+ str.tostring(close_11),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_11,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s11+" "+ str.tostring(close_11),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x12 = if (ta.crossunder(rsi_value_12,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s12+" "+ str.tostring(close_12),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_12,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s12+" "+ str.tostring(close_12),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x13 = if (ta.crossunder(rsi_value_13,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s13+" "+ str.tostring(close_13),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_13,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s13+" "+ str.tostring(close_13),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x14 = if (ta.crossunder(rsi_value_14,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s14+" "+ str.tostring(close_14),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_14,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s14+" "+ str.tostring(close_14),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x15 = if (ta.crossunder(rsi_value_15,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s15+" "+ str.tostring(close_15),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_15,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s15+" "+ str.tostring(close_15),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x16 = if (ta.crossunder(rsi_value_16,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s16+" "+ str.tostring(close_16),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_16,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s16+" "+ str.tostring(close_16),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x17 = if (ta.crossunder(rsi_value_17,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s17+" "+ str.tostring(close_17),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_17,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s17+" "+ str.tostring(close_17),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x18 = if (ta.crossunder(rsi_value_18,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s18+" "+ str.tostring(close_18),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_18,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s18+" "+ str.tostring(close_18),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x19 = if (ta.crossunder(rsi_value_19,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s19+" "+ str.tostring(close_19),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_19,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s19+" "+ str.tostring(close_19),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x20 = if (ta.crossunder(rsi_value_20,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s20+" "+ str.tostring(close_20),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_20,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s20+" "+ str.tostring(close_20),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x21 = if (ta.crossunder(rsi_value_21,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s21+" "+ str.tostring(close_21),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_21,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s21+" "+ str.tostring(close_21),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x22 = if (ta.crossunder(rsi_value_22,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s22+" "+ str.tostring(close_22),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_22,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s22+" "+ str.tostring(close_22),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x23 = if (ta.crossunder(rsi_value_23,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s23+" "+ str.tostring(close_23),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_23,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s23+" "+ str.tostring(close_23),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x24 = if (ta.crossunder(rsi_value_24,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s24+" "+ str.tostring(close_24),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_24,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s24+" "+ str.tostring(close_24),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x25 = if (ta.crossunder(rsi_value_25,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s25+" "+ str.tostring(close_25),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_25,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s25+" "+ str.tostring(close_25),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x26 = if (ta.crossunder(rsi_value_26,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s26+" "+ str.tostring(close_26),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_26,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s26+" "+ str.tostring(close_26),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x27 = if (ta.crossunder(rsi_value_27,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s27+" "+ str.tostring(close_27),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_27,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s27+" "+ str.tostring(close_27),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x28 = if (ta.crossunder(rsi_value_28,rsi_overbought))
+    alert("Sell Now- RSI "+" "+s28+" "+ str.tostring(close_28),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(rsi_value_28,rsi_oversold))
+    alert("Buy Now-RSI "+" "+s28+" "+ str.tostring(close_28),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+
+// screener text
+if(screener)
+    scr_label = "Screener: \n##########################\n"
+    scr_label := scr_label + s01 +" "+str.tostring(int(rsi_value_01))+"\n"
+    scr_label := scr_label + s02 +" "+ str.tostring(int(rsi_value_02))+"\n"
+    scr_label := scr_label + s03 +" "+ str.tostring(int(rsi_value_03))+"\n"
+    scr_label := scr_label + s04 +" "+ str.tostring(int(rsi_value_04))+"\n"
+    scr_label := scr_label + s05 +" "+ str.tostring(int(rsi_value_05))+"\n"
+    scr_label := scr_label + s06 +" "+ str.tostring(int(rsi_value_06))+"\n"
+    scr_label := scr_label + s07 +" "+ str.tostring(int(rsi_value_07))+"\n"
+    scr_label := scr_label + s08 +" "+ str.tostring(int(rsi_value_08))+"\n"
+    scr_label := scr_label + s09 +" "+ str.tostring(int(rsi_value_09))+"\n"
+    scr_label := scr_label + s10 +" "+ str.tostring(int(rsi_value_10))+"\n"
+    scr_label := scr_label + s11 +" "+ str.tostring(int(rsi_value_11))+"\n"
+    scr_label := scr_label + s12 +" "+ str.tostring(int(rsi_value_12))+"\n"
+    scr_label := scr_label + s13 +" "+ str.tostring(int(rsi_value_13))+"\n"
+    scr_label := scr_label + s14 +" "+ str.tostring(int(rsi_value_14))+"\n"
+    scr_label := scr_label + s15 +" "+ str.tostring(int(rsi_value_15))+"\n"
+    scr_label := scr_label + s16 +" "+ str.tostring(int(rsi_value_16))+"\n"
+    scr_label := scr_label + s17 +" "+ str.tostring(int(rsi_value_17))+"\n"
+    scr_label := scr_label + s18 +" "+ str.tostring(int(rsi_value_18))+"\n"
+    scr_label := scr_label + s19 +" "+ str.tostring(int(rsi_value_19))+"\n"
+    scr_label := scr_label + s20 +" "+ str.tostring(int(rsi_value_20))+"\n"
+    scr_label := scr_label + s21 +" "+ str.tostring(int(rsi_value_21))+"\n"
+    scr_label := scr_label + s22 +" "+ str.tostring(int(rsi_value_22))+"\n"
+    scr_label := scr_label + s23 +" "+ str.tostring(int(rsi_value_23))+"\n"
+    scr_label := scr_label + s24 +" "+ str.tostring(int(rsi_value_24))+"\n"
+    scr_label := scr_label + s25 +" "+ str.tostring(int(rsi_value_25))+"\n"
+    scr_label := scr_label + s26 +" "+ str.tostring(int(rsi_value_26))+"\n"
+    scr_label := scr_label + s27 +" "+ str.tostring(int(rsi_value_27))+"\n"
+    scr_label := scr_label + s28 +" "+ str.tostring(int(rsi_value_28))+"\n"
+    // screener label
+    label1 = label.new(bar_index,0,scr_label,color=color.gray,style = label.style_label_down,textcolor=color.white,yloc = yloc.abovebar)
+    label.delete(label1[1])
+
+symbols = array.from(s01,s02,s03,s04,s05,s06,s07,s08,s09,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22,s23,s24,s25,s26,s27,s28)
+rsivalues = array.from(rsi_value_01,rsi_value_02,rsi_value_03,rsi_value_04,rsi_value_05,rsi_value_06,rsi_value_07,rsi_value_08,rsi_value_09,rsi_value_10,rsi_value_11,rsi_value_12,rsi_value_13,rsi_value_14,rsi_value_15,rsi_value_16,rsi_value_17,rsi_value_18,rsi_value_19,rsi_value_20,rsi_value_21,rsi_value_22,rsi_value_23,rsi_value_24,rsi_value_25,rsi_value_26,rsi_value_27,rsi_value_28)
+scr_label02 = "Screener: \n##########################\n"
+for i=0 to 27
+    if(array.get(rsivalues,i) < 20)
+        scr_label02 := scr_label02 + array.get(symbols,i) +" "+"Upcoming Buy Setup \n"
+    
+    if(array.get(rsivalues,i) > 80)
+        scr_label02 := scr_label02 + array.get(symbols,i) +" "+"Upcoming Sell Setup \n"
+
+        
+label2 = label.new(bar_index,0,scr_label02,color=color.gray,style = label.style_label_down,textcolor=color.white,yloc = yloc.abovebar)
+label.delete(label2[1])
+
+
+
+    
+    
+    
+    
+
+
+
+
+
+
+color1 = color.new(#a2a2d0,100)
+plot(0,"Color",color1)
+
+
+//plotchar(x2,char = "&",size = size.small,color = color.green )
+
+buynow = if(ta.crossover(ta.rsi(close,rsi_length),rsi_oversold))
+    true
+    
+sellnow = if(ta.crossunder(ta.rsi(close,rsi_length),rsi_overbought))
+    true
+
+
+//plotshape(currentchart,style=shape.triangleup,size = size.normal,color = color.green )
+//plotchar(currentchart,char="*",size = size.large,color = color.green)
+plotshape(buynow,style=shape.triangleup,location=location.belowbar,size = size.normal,color = color.green)
+plotshape(sellnow,style=shape.triangledown,location=location.abovebar,size = size.normal,color = color.red)
+
+
+
+    
+
+
+
+
+
+
+-----------------------
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © sudipsen96
+
+//@version=5
+indicator("My RSI Multicurrency Screener",overlay = true,title="My RSI Multicurrency Screener")
+
+
+
+screener = input.bool(false,title="Screener")
+
+//input symbols
+s01 = input.symbol("EURUSD", title = "Symbol 01")
+s02 = input.symbol("USDCAD", title = "Symbol 02")
+s03 = input.symbol("AUDUSD", title = "Symbol 03")
+s04 = input.symbol("GBPUSD", title = "Symbol 04")
+s05 = input.symbol("USDCHF", title = "Symbol 05")
+s06 = input.symbol("USDJPY", title = "Symbol 06")
+s07 = input.symbol("AUDCAD", title = "Symbol 07")
+s08 = input.symbol("AUDCHF", title = "Symbol 08")
+s09 = input.symbol("AUDJPY", title = "Symbol 09")
+s10 = input.symbol("AUDNZD", title = "Symbol 10")
+s11 = input.symbol("CADCHF", title = "Symbol 11")
+s12 = input.symbol("CADJPY", title = "Symbol 12")
+s13 = input.symbol("CHFJPY", title = "Symbol 13")
+s14 = input.symbol("EURAUD", title = "Symbol 14")
+s15 = input.symbol("EURCAD", title = "Symbol 15")
+s16 = input.symbol("EURCHF", title = "Symbol 16")
+s17 = input.symbol("EURGBP", title = "Symbol 17")
+s18 = input.symbol("EURJPY", title = "Symbol 18")
+s19 = input.symbol("EURNZD", title = "Symbol 19")
+s20 = input.symbol("GBPAUD", title = "Symbol 20")
+s21 = input.symbol("GBPCAD", title = "Symbol 21")
+s22 = input.symbol("GBPCHF", title = "Symbol 22")
+s23 = input.symbol("GBPJPY", title = "Symbol 23")
+s24 = input.symbol("GBPNZD", title = "Symbol 24")
+s25 = input.symbol("NZDCAD", title = "Symbol 25")
+s26 = input.symbol("NZDCHF", title = "Symbol 26")
+s27 = input.symbol("NZDJPY", title = "Symbol 27")
+s28 = input.symbol("NZDUSD", title = "Symbol 28")
+
+// 200 EMA Cross
+screenerfunc2()=>
+    my200ema = ta.ema(close,200)
+    myclose = close
+    [my200ema,close]
+
+
+//getting values
+[my200ema_01,myclose_01] = request.security(s01,timeframe.period,screenerfunc2())
+[my200ema_02,myclose_02] = request.security(s02,timeframe.period,screenerfunc2())
+[my200ema_03,myclose_03] = request.security(s03,timeframe.period,screenerfunc2())
+[my200ema_04,myclose_04] = request.security(s04,timeframe.period,screenerfunc2())
+[my200ema_05,myclose_05] = request.security(s05,timeframe.period,screenerfunc2())
+[my200ema_06,myclose_06] = request.security(s06,timeframe.period,screenerfunc2())
+[my200ema_07,myclose_07] = request.security(s07,timeframe.period,screenerfunc2())
+[my200ema_08,myclose_08] = request.security(s08,timeframe.period,screenerfunc2())
+[my200ema_09,myclose_09] = request.security(s09,timeframe.period,screenerfunc2())
+[my200ema_10,myclose_10] = request.security(s10,timeframe.period,screenerfunc2())
+[my200ema_11,myclose_11] = request.security(s11,timeframe.period,screenerfunc2())
+[my200ema_12,myclose_12] = request.security(s12,timeframe.period,screenerfunc2())
+[my200ema_13,myclose_13] = request.security(s13,timeframe.period,screenerfunc2())
+[my200ema_14,myclose_14] = request.security(s14,timeframe.period,screenerfunc2())
+[my200ema_15,myclose_15] = request.security(s15,timeframe.period,screenerfunc2())
+[my200ema_16,myclose_16] = request.security(s16,timeframe.period,screenerfunc2())
+[my200ema_17,myclose_17] = request.security(s17,timeframe.period,screenerfunc2())
+[my200ema_18,myclose_18] = request.security(s18,timeframe.period,screenerfunc2())
+[my200ema_19,myclose_19] = request.security(s19,timeframe.period,screenerfunc2())
+[my200ema_20,myclose_20] = request.security(s20,timeframe.period,screenerfunc2())
+[my200ema_21,myclose_21] = request.security(s21,timeframe.period,screenerfunc2())
+[my200ema_22,myclose_22] = request.security(s22,timeframe.period,screenerfunc2())
+[my200ema_23,myclose_23] = request.security(s23,timeframe.period,screenerfunc2())
+[my200ema_24,myclose_24] = request.security(s24,timeframe.period,screenerfunc2())
+[my200ema_25,myclose_25] = request.security(s25,timeframe.period,screenerfunc2())
+[my200ema_26,myclose_26] = request.security(s26,timeframe.period,screenerfunc2())
+[my200ema_27,myclose_27] = request.security(s27,timeframe.period,screenerfunc2())
+[my200ema_28,myclose_28] = request.security(s28,timeframe.period,screenerfunc2())
+
+
+//checking conditions
+x1_my200ema = if (ta.crossunder(myclose_01,my200ema_01))
+    alert("Sell Now-200 EMA"+" "+s01+" "+ str.tostring(myclose_02 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_01,my200ema_01))
+    alert("Buy Now-200 EMA "+" "+s01+" "+str.tostring(myclose_02 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x2_my200ema = if (ta.crossunder(myclose_02,my200ema_02))
+    alert("Sell Now-200 EMA"+" "+s02+" "+ str.tostring(myclose_02 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_02,my200ema_02))
+    alert("Buy Now-200 EMA "+" "+s02+" "+str.tostring(myclose_02 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x3_my200ema = if (ta.crossunder(myclose_03,my200ema_03))
+    alert("Sell Now-200 EMA"+" "+s03+" "+ str.tostring(myclose_03 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_03,my200ema_03))
+    alert("Buy Now-200 EMA "+" "+s03+" "+str.tostring(myclose_03 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x4_my200ema = if (ta.crossunder(myclose_04,my200ema_04))
+    alert("Sell Now-200 EMA"+" "+s04+" "+ str.tostring(myclose_04 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_04,my200ema_04))
+    alert("Buy Now-200 EMA "+" "+s04+" "+str.tostring(myclose_04 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x5_my200ema = if (ta.crossunder(myclose_05,my200ema_05))
+    alert("Sell Now-200 EMA"+" "+s05+" "+ str.tostring(myclose_05 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_05,my200ema_05))
+    alert("Buy Now-200 EMA "+" "+s05+" "+str.tostring(myclose_05 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x6_my200ema = if (ta.crossunder(myclose_06,my200ema_06))
+    alert("Sell Now-200 EMA"+" "+s06+" "+ str.tostring(myclose_06 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_06,my200ema_06))
+    alert("Buy Now-200 EMA "+" "+s06+" "+str.tostring(myclose_06 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x7_my200ema = if (ta.crossunder(myclose_07,my200ema_07))
+    alert("Sell Now-200 EMA"+" "+s07+" "+ str.tostring(myclose_07 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_07,my200ema_07))
+    alert("Buy Now-200 EMA "+" "+s07+" "+str.tostring(myclose_07 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x8_my200ema = if (ta.crossunder(myclose_08,my200ema_08))
+    alert("Sell Now-200 EMA"+" "+s08+" "+ str.tostring(myclose_08 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_08,my200ema_08))
+    alert("Buy Now-200 EMA "+" "+s08+" "+str.tostring(myclose_08 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x9_my200ema = if (ta.crossunder(myclose_09,my200ema_09))
+    alert("Sell Now-200 EMA"+" "+s09+" "+ str.tostring(myclose_09 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_09,my200ema_09))
+    alert("Buy Now-200 EMA "+" "+s09+" "+str.tostring(myclose_09 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x10_my200ema = if (ta.crossunder(myclose_10,my200ema_10))
+    alert("Sell Now-200 EMA"+" "+s10+" "+ str.tostring(myclose_10 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_10,my200ema_10))
+    alert("Buy Now-200 EMA "+" "+s10+" "+str.tostring(myclose_10 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x11_my200ema = if (ta.crossunder(myclose_11,my200ema_11))
+    alert("Sell Now-200 EMA"+" "+s11+" "+ str.tostring(myclose_11 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_11,my200ema_11))
+    alert("Buy Now-200 EMA "+" "+s11+" "+str.tostring(myclose_11 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x12_my200ema = if (ta.crossunder(myclose_12,my200ema_12))
+    alert("Sell Now-200 EMA"+" "+s12+" "+ str.tostring(myclose_12 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_12,my200ema_12))
+    alert("Buy Now-200 EMA "+" "+s12+" "+str.tostring(myclose_12 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x13_my200ema = if (ta.crossunder(myclose_13,my200ema_13))
+    alert("Sell Now-200 EMA"+" "+s13+" "+ str.tostring(myclose_13 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_13,my200ema_13))
+    alert("Buy Now-200 EMA "+" "+s13+" "+str.tostring(myclose_13 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x14_my200ema = if (ta.crossunder(myclose_14,my200ema_14))
+    alert("Sell Now-200 EMA"+" "+s14+" "+ str.tostring(myclose_14 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_14,my200ema_14))
+    alert("Buy Now-200 EMA "+" "+s14+" "+str.tostring(myclose_14 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x15_my200ema = if (ta.crossunder(myclose_15,my200ema_15))
+    alert("Sell Now-200 EMA"+" "+s15+" "+ str.tostring(myclose_15 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_15,my200ema_15))
+    alert("Buy Now-200 EMA "+" "+s15+" "+str.tostring(myclose_15 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x16_my200ema = if (ta.crossunder(myclose_16,my200ema_16))
+    alert("Sell Now-200 EMA"+" "+s16+" "+ str.tostring(myclose_16 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_16,my200ema_16))
+    alert("Buy Now-200 EMA "+" "+s16+" "+str.tostring(myclose_16 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x17_my200ema = if (ta.crossunder(myclose_17,my200ema_17))
+    alert("Sell Now-200 EMA"+" "+s17+" "+ str.tostring(myclose_17 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_17,my200ema_17))
+    alert("Buy Now-200 EMA "+" "+s17+" "+str.tostring(myclose_17 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x18_my200ema = if (ta.crossunder(myclose_18,my200ema_18))
+    alert("Sell Now-200 EMA"+" "+s18+" "+ str.tostring(myclose_18 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_18,my200ema_18))
+    alert("Buy Now-200 EMA "+" "+s18+" "+str.tostring(myclose_18 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x19_my200ema = if (ta.crossunder(myclose_19,my200ema_19))
+    alert("Sell Now-200 EMA"+" "+s19+" "+ str.tostring(myclose_19 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_19,my200ema_19))
+    alert("Buy Now-200 EMA "+" "+s19+" "+str.tostring(myclose_19 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x20_my200ema = if (ta.crossunder(myclose_20,my200ema_20))
+    alert("Sell Now-200 EMA"+" "+s20+" "+ str.tostring(myclose_20 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_20,my200ema_20))
+    alert("Buy Now-200 EMA "+" "+s20+" "+str.tostring(myclose_20 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x21_my200ema = if (ta.crossunder(myclose_21,my200ema_21))
+    alert("Sell Now-200 EMA"+" "+s21+" "+ str.tostring(myclose_21 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_21,my200ema_21))
+    alert("Buy Now-200 EMA "+" "+s21+" "+str.tostring(myclose_21 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x22_my200ema = if (ta.crossunder(myclose_22,my200ema_22))
+    alert("Sell Now-200 EMA"+" "+s22+" "+ str.tostring(myclose_22 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_22,my200ema_22))
+    alert("Buy Now-200 EMA "+" "+s22+" "+str.tostring(myclose_22 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x23_my200ema = if (ta.crossunder(myclose_23,my200ema_23))
+    alert("Sell Now-200 EMA"+" "+s23+" "+ str.tostring(myclose_23 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_23,my200ema_23))
+    alert("Buy Now-200 EMA "+" "+s23+" "+str.tostring(myclose_23 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x24_my200ema = if (ta.crossunder(myclose_24,my200ema_24))
+    alert("Sell Now-200 EMA"+" "+s24+" "+ str.tostring(myclose_24 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_24,my200ema_24))
+    alert("Buy Now-200 EMA "+" "+s24+" "+str.tostring(myclose_24 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x25_my200ema = if (ta.crossunder(myclose_25,my200ema_25))
+    alert("Sell Now-200 EMA"+" "+s25+" "+ str.tostring(myclose_25 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_25,my200ema_25))
+    alert("Buy Now-200 EMA "+" "+s25+" "+str.tostring(myclose_25 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x26_my200ema = if (ta.crossunder(myclose_26,my200ema_26))
+    alert("Sell Now-200 EMA"+" "+s26+" "+ str.tostring(myclose_26 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_26,my200ema_26))
+    alert("Buy Now-200 EMA "+" "+s26+" "+str.tostring(myclose_26 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x27_my200ema = if (ta.crossunder(myclose_27,my200ema_27))
+    alert("Sell Now-200 EMA"+" "+s27+" "+ str.tostring(myclose_27 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_27,my200ema_27))
+    alert("Buy Now-200 EMA "+" "+s27+" "+str.tostring(myclose_27 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
+
+x28_my200ema = if (ta.crossunder(myclose_28,my200ema_28))
+    alert("Sell Now-200 EMA"+" "+s28+" "+ str.tostring(myclose_28 ),alert.freq_once_per_bar_close)
+    true
+else if (ta.crossover(myclose_28,my200ema_28))
+    alert("Buy Now-200 EMA "+" "+s28+" "+str.tostring(myclose_28 ),alert.freq_once_per_bar_close)
+    true
+else
+    false
